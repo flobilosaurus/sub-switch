@@ -22,11 +22,11 @@ func Resolve(c config.Config, cwd, agent string) (Selection, error) {
 	if err != nil {
 		return Selection{}, err
 	}
-	abs = filepath.Clean(abs)
+	abs = physicalPath(abs)
 	var best *config.ProjectRule
 	bestLen := -1
 	for i := range c.Projects {
-		p := filepath.Clean(c.Projects[i].Path)
+		p := physicalPath(c.Projects[i].Path)
 		if matches(abs, p) && len(p) > bestLen {
 			best = &c.Projects[i]
 			bestLen = len(p)
@@ -45,4 +45,33 @@ func Resolve(c config.Config, cwd, agent string) (Selection, error) {
 func matches(cwd, root string) bool {
 	rel, err := filepath.Rel(root, cwd)
 	return err == nil && (rel == "." || (!strings.HasPrefix(rel, "..") && rel != ".."))
+}
+
+func physicalPath(path string) string {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return filepath.Clean(path)
+	}
+	abs = filepath.Clean(abs)
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		return filepath.Clean(resolved)
+	}
+
+	current := abs
+	var suffix []string
+	for {
+		resolved, err := filepath.EvalSymlinks(current)
+		if err == nil {
+			for i := len(suffix) - 1; i >= 0; i-- {
+				resolved = filepath.Join(resolved, suffix[i])
+			}
+			return filepath.Clean(resolved)
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return abs
+		}
+		suffix = append(suffix, filepath.Base(current))
+		current = parent
+	}
 }
