@@ -95,6 +95,15 @@ Project rules use exact-or-child matching. If multiple rules match, the longest 
 
 Agent names are command names from the `agents` map. Agent `command` values must point at the real binary, not a generated wrapper, to avoid recursion.
 
+To add your current folder to the config, pass one or more agent/profile mappings:
+
+```sh
+cd /path/to/work/company-a
+sub-switch add-project pi=company-a claude=company-a
+```
+
+If an agent is not yet configured, `add-project` resolves it from `PATH` and stores that real command path under `agents`. Use `--force` to replace an existing profile mapping for the current folder.
+
 ## Usage
 
 Show what would be selected:

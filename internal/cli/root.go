@@ -25,6 +25,6 @@ func NewRootCommand() *cobra.Command {
 		}
 		return cmd.Help()
 	}
-	cmd.AddCommand(newInitCommand(opts), newWhichCommand(opts), newRunCommand(opts), newInstallWrappersCommand(opts), newDoctorCommand(opts))
+	cmd.AddCommand(newInitCommand(opts), newWhichCommand(opts), newRunCommand(opts), newAddProjectCommand(opts), newInstallWrappersCommand(opts), newDoctorCommand(opts))
 	return cmd
 }
