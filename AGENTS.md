@@ -30,6 +30,18 @@ mise install
 Pinned tools are in `mise.toml`:
 
 - Go `1.22.12`
+- Additional Go static-analysis tools from analysis-tools.dev suggestions:
+  - `nilaway` for nil-panic analysis
+  - `gopls` for official Go analyzer checks
+  - `deadcode` for unreachable/unused code
+  - `shadow` for accidental variable shadowing
+  - `fieldalignment` for struct layout checks
+  - Staticcheck's `U1000` check for precise unused-code detection
+  - `depguard` for import allow/deny rules
+  - `gci` for import grouping/formatting
+  - `go-licenses` for dependency license checks
+  - `nancy` for dependency vulnerability scanning
+  - `arch-go` and `go-cleanarch` for optional architecture boundary checks
 
 Preferred verification command:
 
@@ -45,13 +57,31 @@ go vet ./...
 go build ./cmd/sub-switch
 ```
 
-Individual tasks:
+Individual required tasks:
 
 ```sh
 mise run test
 mise run vet
 mise run build
 ```
+
+Additional focused static-analysis tasks:
+
+```sh
+mise run gci              # import grouping/formatting diff
+mise run deadcode         # official Go dead-code analyzer
+mise run unused           # precise unused-code analyzer via Staticcheck U1000
+mise run nilaway          # nil-panic analyzer
+mise run shadow           # shadowed-variable analyzer
+mise run fieldalignment   # struct layout suggestions
+mise run gopls-check      # gopls analyzers over tracked Go files
+mise run licenses         # dependency license checks
+mise run nancy            # dependency vulnerability scan
+mise run depguard         # import rules, once depguard policy is configured
+mise run arch             # arch-go/go-cleanarch, when config files exist
+```
+
+Use `mise run static-analysis` for the main non-security analyzer bundle, and `mise run security-analysis` for license/vulnerability checks. These are intentionally stricter and are not part of `mise run check` unless the project decides to gate CI on them.
 
 If dependencies change, run:
 

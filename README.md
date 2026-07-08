@@ -17,14 +17,17 @@ mise install
 Required tools:
 
 - Go `1.22.12`
+- Additional static-analysis Go CLIs declared in `mise.toml` for deeper local checks
 
 Useful mise tasks:
 
 ```sh
-mise run test   # go test ./...
-mise run vet    # go vet ./...
-mise run build  # go build ./cmd/sub-switch
-mise run check  # test + vet + build
+mise run test              # go test ./...
+mise run vet               # go vet ./...
+mise run build             # go build ./cmd/sub-switch
+mise run check             # test + vet + build
+mise run static-analysis   # stricter Go analyzers, not CI-gating by default
+mise run security-analysis # dependency license/vulnerability checks
 ```
 
 Equivalent direct Go commands:

@@ -1,5 +1,17 @@
 [tools]
 go = "1.22.12"
+"go:go.uber.org/nilaway/cmd/nilaway" = "0.0.0-20260707193443-5c662b71f232"
+"go:golang.org/x/tools/gopls" = "0.22.0"
+"go:golang.org/x/tools/cmd/deadcode" = "0.47.0"
+"go:golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow" = "0.47.0"
+"go:golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment" = "0.47.0"
+"go:honnef.co/go/tools/cmd/staticcheck" = "0.7.0"
+"go:github.com/OpenPeeDeeP/depguard/cmd/depguard" = "1.1.1"
+"go:github.com/daixiang0/gci" = "0.14.0"
+"go:github.com/google/go-licenses" = "1.6.0"
+"go:github.com/sonatype-nexus-community/nancy" = "1.2.0"
+"go:github.com/arch-go/arch-go" = "1.7.0"
+"go:github.com/roblaszczak/go-cleanarch" = "1.2.1"
 
 [tasks.test]
 description = "Run the Go test suite"
@@ -13,6 +25,69 @@ run = "go vet ./..."
 description = "Build the sub-switch CLI"
 run = "go build ./cmd/sub-switch"
 
+[tasks.gci]
+description = "Check import grouping/formatting with gci"
+run = "gci diff --skip-generated ."
+
+[tasks.deadcode]
+description = "Find unreachable or unused code with the Go tools deadcode analyzer"
+run = "deadcode ./..."
+
+[tasks.unused]
+description = "Find unused code via Staticcheck U1000"
+run = "staticcheck -checks=U1000 ./..."
+
+[tasks.nilaway]
+description = "Run Uber NilAway nil-panic analysis"
+run = "nilaway ./..."
+
+[tasks.shadow]
+description = "Run the shadowed-variable analyzer"
+run = "shadow ./..."
+
+[tasks.fieldalignment]
+description = "Suggest struct field alignment improvements"
+run = "fieldalignment ./..."
+
+[tasks.gopls-check]
+description = "Run gopls analyzers over tracked Go files"
+run = "git ls-files '*.go' | xargs gopls check"
+
+[tasks.licenses]
+description = "Check Go dependency licenses"
+run = "go-licenses check ./..."
+
+[tasks.nancy]
+description = "Scan Go dependencies with Nancy/OSS Index"
+run = "go list -json -deps ./... | nancy sleuth"
+
+[tasks.depguard]
+description = "Check import allow/deny rules when depguard config is present"
+run = "depguard ./..."
+
+[tasks.arch]
+description = "Run optional architecture dependency checks when configured"
+run = '''
+if [ -f .arch-go.yml ] || [ -f .arch-go.yaml ]; then
+  arch-go
+else
+  echo "skipping arch-go: no .arch-go.yml or .arch-go.yaml"
+fi
+if [ -f .go-cleanarch.yml ] || [ -f .go-cleanarch.yaml ]; then
+  go-cleanarch
+else
+  echo "skipping go-cleanarch: no .go-cleanarch.yml or .go-cleanarch.yaml"
+fi
+'''
+
+[tasks.static-analysis]
+description = "Run additional, stricter Go static analysis tools"
+depends = ["gci", "deadcode", "unused", "nilaway", "shadow", "fieldalignment", "gopls-check"]
+
+[tasks.security-analysis]
+description = "Run dependency/license security checks"
+depends = ["licenses", "nancy"]
+
 [tasks.check]
-description = "Run all verification checks"
+description = "Run all required verification checks"
 depends = ["test", "vet", "build"]
