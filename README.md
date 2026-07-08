@@ -31,7 +31,7 @@ mise install
 
 Required tools:
 
-- Go `1.22.12`
+- Go `1.26.4`
 - Additional static-analysis Go CLIs declared in `mise.toml` for deeper local checks
 
 Useful mise tasks:

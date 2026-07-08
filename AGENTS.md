@@ -29,7 +29,7 @@ mise install
 
 Pinned tools are in `mise.toml`:
 
-- Go `1.22.12`
+- Go `1.26.4`
 - Additional Go static-analysis tools from analysis-tools.dev suggestions:
   - `nilaway` for nil-panic analysis
   - `gopls` for official Go analyzer checks
