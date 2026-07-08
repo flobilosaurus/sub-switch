@@ -1,0 +1,9 @@
+/sub-switch
+/dist/
+/bin/
+*.test
+*.out
+coverage.txt
+.DS_Store
+/tmp/
+*.local.yaml

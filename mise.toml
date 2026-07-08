@@ -1,0 +1,18 @@
+[tools]
+go = "1.22.12"
+
+[tasks.test]
+description = "Run the Go test suite"
+run = "go test ./..."
+
+[tasks.vet]
+description = "Run go vet"
+run = "go vet ./..."
+
+[tasks.build]
+description = "Build the sub-switch CLI"
+run = "go build ./cmd/sub-switch"
+
+[tasks.check]
+description = "Run all verification checks"
+depends = ["test", "vet", "build"]
