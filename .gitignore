@@ -7,3 +7,5 @@ coverage.txt
 .DS_Store
 /tmp/
 *.local.yaml
+
+/docs/agents/

@@ -83,7 +83,7 @@ agents:
   opencode:
     command: /opt/homebrew/bin/opencode
 projects:
-  - path: /Users/florian/work/company-a
+  - path: /path/to/work/company-a
     profiles:
       pi: company-a
       claude: company-a
@@ -113,7 +113,7 @@ sub-switch run pi --quiet -- --version
 By default, `run` prints a confirmation banner before launching:
 
 ```text
-[sub-switch] pi -> profile company-a (/Users/florian/work/company-a)
+[sub-switch] pi -> profile company-a (/path/to/work/company-a)
 ```
 
 `--quiet` suppresses the banner.

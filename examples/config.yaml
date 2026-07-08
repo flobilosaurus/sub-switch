@@ -11,7 +11,7 @@ agents:
   opencode:
     command: /opt/homebrew/bin/opencode
 projects:
-  - path: /Users/florian/work/company-a
+  - path: /path/to/work/company-a
     profiles:
       pi: company-a
       claude: company-a

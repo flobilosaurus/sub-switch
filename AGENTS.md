@@ -170,7 +170,7 @@ agents:
   pi:
     command: /opt/homebrew/bin/pi
 projects:
-  - path: /Users/florian/work/company-a
+  - path: /path/to/work/company-a
     profiles:
       pi: company-a
 ```
