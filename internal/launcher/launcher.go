@@ -38,16 +38,19 @@ func Run(s CommandSpec) error {
 	cmd := exec.Command(s.Command, s.Args...)
 	cmd.Env = s.Env
 	cmd.Dir = s.CWD
-	cmd.Stdout = s.Stdout
-	if cmd.Stdout == nil {
+	if s.Stdout != nil {
+		cmd.Stdout = s.Stdout
+	} else {
 		cmd.Stdout = os.Stdout
 	}
-	cmd.Stderr = s.Stderr
-	if cmd.Stderr == nil {
+	if s.Stderr != nil {
+		cmd.Stderr = s.Stderr
+	} else {
 		cmd.Stderr = os.Stderr
 	}
-	cmd.Stdin = s.Stdin
-	if cmd.Stdin == nil {
+	if s.Stdin != nil {
+		cmd.Stdin = s.Stdin
+	} else {
 		cmd.Stdin = os.Stdin
 	}
 	return cmd.Run()

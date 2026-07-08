@@ -88,11 +88,15 @@ func TestAddProjectAddsCurrentFolderAndUpdatesExistingMapping(t *testing.T) {
 	if err := os.Chdir(proj); err != nil {
 		t.Fatal(err)
 	}
+	resolvedProj, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
 	out, err := execute("--config", cfg, "add-project", "pi=work", "claude=work")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "added project\t"+proj) {
+	if !strings.Contains(out, "added project\t"+resolvedProj) {
 		t.Fatalf("unexpected output: %s", out)
 	}
 	b, err := os.ReadFile(cfg)
@@ -100,7 +104,7 @@ func TestAddProjectAddsCurrentFolderAndUpdatesExistingMapping(t *testing.T) {
 		t.Fatal(err)
 	}
 	content := string(b)
-	if !strings.Contains(content, "path: "+proj) || !strings.Contains(content, "pi: work") || !strings.Contains(content, "claude: work") {
+	if !strings.Contains(content, "path: "+resolvedProj) || !strings.Contains(content, "pi: work") || !strings.Contains(content, "claude: work") {
 		t.Fatalf("config was not updated with project mappings:\n%s", content)
 	}
 	if _, err := execute("--config", cfg, "add-project", "pi=personal"); err == nil {
