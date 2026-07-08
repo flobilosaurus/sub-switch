@@ -158,6 +158,17 @@ sub-switch doctor --wrapper-dir ~/.local/bin
 
 Doctor validates config loading, configured command paths, wrapper recursion risks, missing wrappers, and PATH lookup issues where a real binary shadows the wrapper.
 
+## Releasing
+
+Push a version tag to build release binaries and publish a GitHub Release:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Release notes are generated from semantic/conventional commit subjects such as `feat: ...`, `fix: ...`, and `feat!: ...`.
+
 ## MVP limitations
 
 - No Docker/sandbox launching yet.
