@@ -4,6 +4,21 @@
 
 The MVP supports `pi`, `claude`, `codex`, and `opencode`, denies unknown folders by default, installs PATH wrappers, and includes `doctor` checks. Sandbox/Docker support is intentionally not included yet.
 
+## Install
+
+Install the latest release to `~/.local/bin`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/florian-balling/sub-switch/main/install.sh | sh
+```
+
+Use a custom install directory or version:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/florian-balling/sub-switch/main/install.sh | INSTALL_DIR=/usr/local/bin sh
+curl -fsSL https://raw.githubusercontent.com/florian-balling/sub-switch/main/install.sh | SUB_SWITCH_VERSION=v0.1.0 sh
+```
+
 ## Development tools with mise
 
 This project uses [mise](https://mise.jdx.dev/) to install required development tools.
