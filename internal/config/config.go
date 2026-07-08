@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -150,6 +151,9 @@ func (c Config) Validate() error {
 		if strings.TrimSpace(name) == "" {
 			return fmt.Errorf("agent name must not be empty")
 		}
+		if name != filepath.Base(name) || name == "." || name == ".." {
+			return fmt.Errorf("agent %s name must be a command name, not a path", name)
+		}
 		if strings.TrimSpace(ac.Command) == "" {
 			return fmt.Errorf("agent %s command must not be empty", name)
 		}
@@ -170,6 +174,15 @@ func (c Config) Validate() error {
 	return nil
 }
 
+func AgentNames(agents map[string]AgentConfig) []string {
+	names := make([]string, 0, len(agents))
+	for name := range agents {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
+}
+
 func StarterConfig() Config {
-	return Config{Default: DefaultPolicyDeny, UI: UIConfig{StartupBanner: true}, Agents: map[string]AgentConfig{"pi": {Command: "/opt/homebrew/bin/pi"}, "claude": {Command: "/opt/homebrew/bin/claude"}, "codex": {Command: "/opt/homebrew/bin/codex"}, "opencode": {Command: "/opt/homebrew/bin/opencode"}}, Projects: []ProjectRule{{Path: "~/work/example", Profiles: map[string]string{"pi": "example", "claude": "example", "codex": "example", "opencode": "example"}}}}
+	return Config{Default: DefaultPolicyDeny, UI: UIConfig{StartupBanner: true}, Agents: map[string]AgentConfig{}, Projects: []ProjectRule{}}
 }

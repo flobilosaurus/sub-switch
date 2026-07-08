@@ -9,20 +9,21 @@ import (
 
 func TestInstallWrappers(t *testing.T) {
 	dir := t.TempDir()
-	res, err := Install(dir, "/bin/sub-switch", false)
+	agents := []string{"gemini", "pi"}
+	res, err := Install(dir, "/bin/sub-switch", agents, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(res) != len(SupportedAgents) {
+	if len(res) != len(agents) {
 		t.Fatalf("got %d", len(res))
 	}
-	for _, a := range SupportedAgents {
+	for _, a := range agents {
 		p := filepath.Join(dir, a)
 		b, err := os.ReadFile(p)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(string(b), Marker) || !strings.Contains(string(b), "\"$@\"") {
+		if !strings.Contains(string(b), Marker) || !strings.Contains(string(b), "\"$@\"") || !strings.Contains(string(b), "run '"+a+"'") {
 			t.Fatalf("bad wrapper %s", a)
 		}
 		st, err := os.Stat(p)
@@ -41,14 +42,14 @@ func TestInstallRefusesAndForceOverwrites(t *testing.T) {
 	if err := os.WriteFile(p, []byte("custom"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	res, err := Install(dir, "/bin/sub-switch", false)
+	res, err := Install(dir, "/bin/sub-switch", []string{"pi"}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if res[0].Action != "refused" {
 		t.Fatalf("want refused: %#v", res[0])
 	}
-	if _, err := Install(dir, "/bin/sub-switch", true); err != nil {
+	if _, err := Install(dir, "/bin/sub-switch", []string{"pi"}, true); err != nil {
 		t.Fatal(err)
 	}
 	if !IsManagedFile(p) {

@@ -23,7 +23,7 @@ func TestWrapperE2EHappyPath(t *testing.T) {
 	recordsDir := filepath.Join(root, "records")
 	realAgentsDir := filepath.Join(root, "real-agents")
 	recordFile := filepath.Join(recordsDir, "pi.env")
-	fakeAgent := filepath.Join(realAgentsDir, "fake-pi")
+	fakeAgent := filepath.Join(realAgentsDir, "pi")
 	for _, dir := range []string{home, filepath.Join(xdgConfig, "sub-switch"), project, wrapperDir, recordsDir, realAgentsDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
@@ -31,13 +31,13 @@ func TestWrapperE2EHappyPath(t *testing.T) {
 	}
 
 	subSwitch := buildTestSubSwitch(t)
-	out, err := runCmd(t, root, testEnv(home, xdgConfig), subSwitch, "install-wrappers", "--dir", wrapperDir)
+	writeFakeAgent(t, fakeAgent, recordFile)
+	writeConfig(t, filepath.Join(xdgConfig, "sub-switch", "config.yaml"), project, fakeAgent, "company")
+
+	out, err := runCmd(t, root, testEnvWithPath(home, xdgConfig, realAgentsDir), subSwitch, "install-wrappers", "pi", "--dir", wrapperDir)
 	if err != nil {
 		t.Fatalf("install wrappers failed: %v\n%s", err, out)
 	}
-
-	writeFakeAgent(t, fakeAgent, recordFile)
-	writeConfig(t, filepath.Join(xdgConfig, "sub-switch", "config.yaml"), project, fakeAgent, "company")
 
 	out, err = runCmd(t, project, testEnv(home, xdgConfig), filepath.Join(wrapperDir, "pi"), "--version", "--json")
 	if err != nil {
@@ -72,7 +72,7 @@ func TestWrapperE2EDeniedFromUnmatchedDirectory(t *testing.T) {
 	recordsDir := filepath.Join(root, "records")
 	realAgentsDir := filepath.Join(root, "real-agents")
 	recordFile := filepath.Join(recordsDir, "pi.env")
-	fakeAgent := filepath.Join(realAgentsDir, "fake-pi")
+	fakeAgent := filepath.Join(realAgentsDir, "pi")
 	for _, dir := range []string{home, filepath.Join(xdgConfig, "sub-switch"), project, unknown, wrapperDir, recordsDir, realAgentsDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
@@ -80,13 +80,13 @@ func TestWrapperE2EDeniedFromUnmatchedDirectory(t *testing.T) {
 	}
 
 	subSwitch := buildTestSubSwitch(t)
-	out, err := runCmd(t, root, testEnv(home, xdgConfig), subSwitch, "install-wrappers", "--dir", wrapperDir)
+	writeFakeAgent(t, fakeAgent, recordFile)
+	writeConfig(t, filepath.Join(xdgConfig, "sub-switch", "config.yaml"), project, fakeAgent, "company")
+
+	out, err := runCmd(t, root, testEnvWithPath(home, xdgConfig, realAgentsDir), subSwitch, "install-wrappers", "pi", "--dir", wrapperDir)
 	if err != nil {
 		t.Fatalf("install wrappers failed: %v\n%s", err, out)
 	}
-
-	writeFakeAgent(t, fakeAgent, recordFile)
-	writeConfig(t, filepath.Join(xdgConfig, "sub-switch", "config.yaml"), project, fakeAgent, "company")
 
 	out, err = runCmd(t, unknown, testEnv(home, xdgConfig), filepath.Join(wrapperDir, "pi"), "--version")
 	if err == nil {
@@ -111,7 +111,7 @@ func TestWrapperE2EManagedWrapperRecursionGuard(t *testing.T) {
 	recordsDir := filepath.Join(root, "records")
 	realAgentsDir := filepath.Join(root, "real-agents")
 	recordFile := filepath.Join(recordsDir, "pi.env")
-	fakeAgent := filepath.Join(realAgentsDir, "fake-pi")
+	fakeAgent := filepath.Join(realAgentsDir, "pi")
 	for _, dir := range []string{home, filepath.Join(xdgConfig, "sub-switch"), project, wrapperDir, recordsDir, realAgentsDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
@@ -119,12 +119,13 @@ func TestWrapperE2EManagedWrapperRecursionGuard(t *testing.T) {
 	}
 
 	subSwitch := buildTestSubSwitch(t)
-	out, err := runCmd(t, root, testEnv(home, xdgConfig), subSwitch, "install-wrappers", "--dir", wrapperDir)
+	writeFakeAgent(t, fakeAgent, recordFile)
+	writeConfig(t, filepath.Join(xdgConfig, "sub-switch", "config.yaml"), project, fakeAgent, "company")
+
+	out, err := runCmd(t, root, testEnvWithPath(home, xdgConfig, realAgentsDir), subSwitch, "install-wrappers", "pi", "--dir", wrapperDir)
 	if err != nil {
 		t.Fatalf("install wrappers failed: %v\n%s", err, out)
 	}
-
-	writeFakeAgent(t, fakeAgent, recordFile)
 	writeConfig(t, filepath.Join(xdgConfig, "sub-switch", "config.yaml"), project, filepath.Join(wrapperDir, "pi"), "company")
 
 	out, err = runCmd(t, project, testEnv(home, xdgConfig), filepath.Join(wrapperDir, "pi"), "--version")
@@ -185,6 +186,11 @@ func testEnv(home, xdgConfig string) []string {
 	env := append([]string{}, os.Environ()...)
 	env = appendWithoutPrefixes(env, "HOME=", "XDG_CONFIG_HOME=", "XDG_CACHE_HOME=", "XDG_DATA_HOME=")
 	return append(env, "HOME="+home, "XDG_CONFIG_HOME="+xdgConfig)
+}
+
+func testEnvWithPath(home, xdgConfig, pathDir string) []string {
+	env := appendWithoutPrefixes(testEnv(home, xdgConfig), "PATH=")
+	return append(env, "PATH="+pathDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
 
 func appendWithoutPrefixes(env []string, prefixes ...string) []string {

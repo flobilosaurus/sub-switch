@@ -2,7 +2,7 @@
 
 `sub-switch` selects an allowed subscription/profile for agent CLIs from the current folder and launches the real binary with profile-isolated XDG directories.
 
-The MVP supports `pi`, `claude`, `codex`, and `opencode`, denies unknown folders by default, installs PATH wrappers, and includes `doctor` checks. Sandbox/Docker support is intentionally not included yet.
+The MVP supports configurable agent commands, denies unknown folders by default, installs PATH wrappers for configured agents, and includes `doctor` checks. Sandbox/Docker support is intentionally not included yet.
 
 ## Install
 
@@ -65,7 +65,7 @@ sub-switch init
 sub-switch --config /tmp/sub-switch-config.yaml init
 ```
 
-The default config path is `$XDG_CONFIG_HOME/sub-switch/config.yaml`, or `~/.config/sub-switch/config.yaml` when `XDG_CONFIG_HOME` is unset.
+The starter config has no agents or projects; add the agent commands and project profile mappings you want to allow. The default config path is `$XDG_CONFIG_HOME/sub-switch/config.yaml`, or `~/.config/sub-switch/config.yaml` when `XDG_CONFIG_HOME` is unset.
 
 ## Config
 
@@ -93,7 +93,7 @@ projects:
 
 Project rules use exact-or-child matching. If multiple rules match, the longest path prefix wins. If no project matches, or the selected project has no profile for the requested agent, the agent is not launched.
 
-Agent `command` values must point at the real binary, not a generated wrapper, to avoid recursion.
+Agent names are command names from the `agents` map. Agent `command` values must point at the real binary, not a generated wrapper, to avoid recursion.
 
 ## Usage
 
@@ -135,10 +135,10 @@ Other environment variables are preserved.
 Install wrapper executables earlier in `PATH`:
 
 ```sh
-sub-switch install-wrappers --dir ~/.local/bin
+sub-switch install-wrappers pi --dir ~/.local/bin
 ```
 
-This creates `pi`, `claude`, `codex`, and `opencode` shell wrappers that call:
+This resolves `pi` from `PATH`, stores it in `agents`, and creates shell wrappers for all configured agents. Each wrapper calls:
 
 ```sh
 sub-switch run <agent> -- "$@"

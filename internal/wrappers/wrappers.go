@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
-
-var SupportedAgents = []string{"pi", "claude", "codex", "opencode"}
 
 const Marker = "# managed by sub-switch; do not edit"
 
@@ -19,14 +18,19 @@ type Result struct {
 }
 
 func Content(subSwitchPath, agent string) string {
-	return fmt.Sprintf("#!/bin/sh\n%s\nexec %q run %s -- \"$@\"\n", Marker, subSwitchPath, agent)
+	return fmt.Sprintf("#!/bin/sh\n%s\nexec %s run %s -- \"$@\"\n", Marker, shellQuote(subSwitchPath), shellQuote(agent))
 }
+
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+}
+
 func IsManagedFile(path string) bool {
 	b, err := os.ReadFile(path)
 	return err == nil && strings.Contains(string(b), Marker)
 }
 
-func Install(dir, subSwitchPath string, force bool) ([]Result, error) {
+func Install(dir, subSwitchPath string, agents []string, force bool) ([]Result, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
@@ -36,8 +40,9 @@ func Install(dir, subSwitchPath string, force bool) ([]Result, error) {
 	if abs, err := filepath.Abs(subSwitchPath); err == nil {
 		subSwitchPath = abs
 	}
-	results := make([]Result, 0, len(SupportedAgents))
-	for _, a := range SupportedAgents {
+	agents = sortedUniqueAgents(agents)
+	results := make([]Result, 0, len(agents))
+	for _, a := range agents {
 		p := filepath.Join(dir, a)
 		content := []byte(Content(subSwitchPath, a))
 		action := "created"
@@ -58,4 +63,18 @@ func Install(dir, subSwitchPath string, force bool) ([]Result, error) {
 		results = append(results, Result{Agent: a, Path: p, Action: action})
 	}
 	return results, nil
+}
+
+func sortedUniqueAgents(agents []string) []string {
+	seen := make(map[string]struct{}, len(agents))
+	out := make([]string, 0, len(agents))
+	for _, agent := range agents {
+		if _, ok := seen[agent]; ok {
+			continue
+		}
+		seen[agent] = struct{}{}
+		out = append(out, agent)
+	}
+	sort.Strings(out)
+	return out
 }

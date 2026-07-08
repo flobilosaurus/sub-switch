@@ -6,7 +6,7 @@ Guidance for AI coding agents working in this repository.
 
 `sub-switch` is a Go CLI that selects an allowed subscription/profile for agent CLIs based on the current working directory. It then launches the configured real agent binary with profile-isolated XDG directories.
 
-Supported MVP agents: `pi`, `claude`, `codex`, `opencode`.
+Supported MVP agents are defined by the `agents` map in config; fresh starter configs intentionally contain no initial agents.
 
 Safety model:
 
@@ -15,7 +15,7 @@ Safety model:
 - If multiple project rules match, the longest path prefix wins.
 - If a matched project has no profile for the requested agent, launch is denied.
 - Real agent commands must be explicit configured paths to avoid PATH wrapper recursion.
-- Managed wrappers are generated executables that call `sub-switch run <agent> -- "$@"`.
+- Managed wrappers are generated executables for configured agents that call `sub-switch run <agent> -- "$@"`.
 
 Sandbox/Docker support is intentionally out of scope for the MVP, but README notes it as future work.
 
@@ -141,16 +141,9 @@ Must:
 - Print startup banner by default when `ui.startup_banner: true`.
 - Suppress banner with `--quiet`.
 
-### `sub-switch install-wrappers --dir <path> [--force]`
+### `sub-switch install-wrappers <agent> --dir <path> [--force]`
 
-Must generate wrappers for exactly:
-
-- `pi`
-- `claude`
-- `codex`
-- `opencode`
-
-Wrappers should be executable, include the managed marker, and forward `"$@"`.
+Must resolve `<agent>` from `PATH`, add/update that agent in config, save the config, and generate executable wrappers for all configured agents. It must refuse to add a managed sub-switch wrapper as the real command. Wrappers should include the managed marker and forward `"$@"`.
 
 Do not overwrite unrelated existing files unless `--force` is used. Re-running should update managed wrappers idempotently.
 
