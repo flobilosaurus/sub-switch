@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repository.
 
 ## Project summary
 
-`sub-switch` is a Go CLI that selects an allowed subscription/profile for agent CLIs based on the current working directory. It then launches the configured real agent binary with profile-isolated XDG directories.
+`sub-switch` is a Go CLI that selects an allowed subscription/profile for agent CLIs based on the current working directory. It then launches the configured real agent binary with profile-isolated XDG directories, supported agent-specific state env vars, strict auth/state env scrubbing, and optional profile literal env injection.
 
 Supported MVP agents are defined by the `agents` map in config; fresh starter configs intentionally contain no initial agents.
 
@@ -132,11 +132,18 @@ Must:
 - Deny before launching on no matching project or missing profile.
 - Validate configured real command exists.
 - Refuse configured command paths that point to managed sub-switch wrappers.
-- Create profile-specific XDG dirs.
-- Preserve unrelated env vars and override only:
+- Create profile-specific XDG dirs and supported agent-specific state dirs.
+- Preserve unrelated env vars.
+- Scrub known auth/token/cloud vars and agent-state override vars.
+- Replace managed vars:
   - `XDG_CONFIG_HOME`
   - `XDG_CACHE_HOME`
   - `XDG_DATA_HOME`
+  - `PI_CODING_AGENT_DIR`, `PI_CODING_AGENT_SESSION_DIR` for `pi`
+  - `CLAUDE_CONFIG_DIR` for `claude`
+  - `CODEX_HOME` for `codex`
+- Scrub inherited `OPENCODE_CONFIG` and `OPENCODE_CONFIG_DIR` for `opencode`.
+- Inject `profiles.<profile>.<agent>.env` literal values last for non-reserved names.
 - Forward all args after `--` unchanged.
 - Print startup banner by default when `ui.startup_banner: true`.
 - Suppress banner with `--quiet`.
@@ -162,13 +169,18 @@ ui:
 agents:
   pi:
     command: /opt/homebrew/bin/pi
+profiles:
+  company-a:
+    pi:
+      env:
+        ANTHROPIC_API_KEY: sk-ant-example
 projects:
   - path: /path/to/work/company-a
     profiles:
       pi: company-a
 ```
 
-Only `default: deny` is currently supported. Paths may use `~` and should be normalized.
+Only `default: deny` is currently supported. Paths may use `~` and should be normalized. Config files may contain literal credentials; `sub-switch` writes them as `0600`, but users must not commit/share real configs and should verify permissions after external edits.
 
 ## Testing expectations
 
@@ -176,7 +188,7 @@ When changing code, add or update unit tests in the relevant package. Important 
 
 - Config defaults, loading, invalid YAML/policies, init overwrite behavior.
 - Resolver exact match, child match, longest-prefix match, denial cases.
-- XDG env path construction and directory creation.
+- XDG and agent-specific env path construction, auth/state scrubbing, profile env injection, and directory creation.
 - Launcher argument forwarding and env visibility using fake commands.
 - Refusal to launch missing commands and managed-wrapper recursion paths.
 - CLI banner and `--quiet` behavior.

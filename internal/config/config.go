@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -13,11 +14,32 @@ import (
 
 const DefaultPolicyDeny = "deny"
 
+var envNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+var reservedEnvNames = map[string]struct{}{
+	"XDG_CONFIG_HOME":             {},
+	"XDG_CACHE_HOME":              {},
+	"XDG_DATA_HOME":               {},
+	"PI_CODING_AGENT_DIR":         {},
+	"PI_CODING_AGENT_SESSION_DIR": {},
+	"CLAUDE_CONFIG_DIR":           {},
+	"CODEX_HOME":                  {},
+	"OPENCODE_CONFIG":             {},
+	"OPENCODE_CONFIG_DIR":         {},
+}
+
 type Config struct {
-	Agents   map[string]AgentConfig `yaml:"agents"`
-	Default  string                 `yaml:"default"`
-	Projects []ProjectRule          `yaml:"projects"`
-	UI       UIConfig               `yaml:"ui"`
+	Agents   map[string]AgentConfig   `yaml:"agents"`
+	Default  string                   `yaml:"default"`
+	Profiles map[string]ProfileConfig `yaml:"profiles"`
+	Projects []ProjectRule            `yaml:"projects"`
+	UI       UIConfig                 `yaml:"ui"`
+}
+
+type ProfileConfig map[string]AgentProfileConfig
+
+type AgentProfileConfig struct {
+	Env map[string]string `yaml:"env"`
 }
 
 type UIConfig struct {
@@ -38,6 +60,9 @@ func ApplyDefaults(c *Config) {
 	// Startup banner defaults true; detect zero-value impossible after unmarshal, so callers use Load/Starter.
 	if c.Agents == nil {
 		c.Agents = map[string]AgentConfig{}
+	}
+	if c.Profiles == nil {
+		c.Profiles = map[string]ProfileConfig{}
 	}
 }
 
@@ -84,15 +109,16 @@ func Load(path string) (*Config, string, error) {
 		return nil, resolved, err
 	}
 	var raw struct {
-		Default  string                 `yaml:"default"`
-		UI       *UIConfig              `yaml:"ui"`
-		Agents   map[string]AgentConfig `yaml:"agents"`
-		Projects []ProjectRule          `yaml:"projects"`
+		Default  string                   `yaml:"default"`
+		UI       *UIConfig                `yaml:"ui"`
+		Agents   map[string]AgentConfig   `yaml:"agents"`
+		Profiles map[string]ProfileConfig `yaml:"profiles"`
+		Projects []ProjectRule            `yaml:"projects"`
 	}
 	if err := yaml.Unmarshal(b, &raw); err != nil {
 		return nil, resolved, err
 	}
-	c := Config{Default: raw.Default, UI: UIConfig{StartupBanner: true}, Agents: raw.Agents, Projects: raw.Projects}
+	c := Config{Default: raw.Default, UI: UIConfig{StartupBanner: true}, Agents: raw.Agents, Profiles: raw.Profiles, Projects: raw.Projects}
 	if raw.UI != nil {
 		c.UI = *raw.UI
 	}
@@ -139,7 +165,10 @@ func Save(path string, c Config, force bool) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(resolved, b, 0o600)
+	if err := os.WriteFile(resolved, b, 0o600); err != nil {
+		return err
+	}
+	return os.Chmod(resolved, 0o600)
 }
 
 func (c Config) Validate() error {
@@ -148,14 +177,32 @@ func (c Config) Validate() error {
 		return fmt.Errorf("unsupported default policy %q", c.Default)
 	}
 	for name, ac := range c.Agents {
-		if strings.TrimSpace(name) == "" {
-			return fmt.Errorf("agent name must not be empty")
-		}
-		if name != filepath.Base(name) || name == "." || name == ".." {
-			return fmt.Errorf("agent %s name must be a command name, not a path", name)
+		if err := validateCommandName(name); err != nil {
+			return fmt.Errorf("agent %q: %w", name, err)
 		}
 		if strings.TrimSpace(ac.Command) == "" {
 			return fmt.Errorf("agent %s command must not be empty", name)
+		}
+	}
+	for profileName, pc := range c.Profiles {
+		if err := validateSafePathSegment(profileName); err != nil {
+			return fmt.Errorf("profile %q has invalid name: %w", profileName, err)
+		}
+		for agentName, apc := range pc {
+			if err := validateCommandName(agentName); err != nil {
+				return fmt.Errorf("profile %s agent %q: %w", profileName, agentName, err)
+			}
+			for name, value := range apc.Env {
+				if !envNamePattern.MatchString(name) {
+					return fmt.Errorf("profile %s agent %s env %q has invalid name", profileName, agentName, name)
+				}
+				if _, reserved := reservedEnvNames[name]; reserved {
+					return fmt.Errorf("profile %s agent %s env %q is managed by sub-switch", profileName, agentName, name)
+				}
+				if strings.ContainsRune(value, '\x00') {
+					return fmt.Errorf("profile %s agent %s env %q contains NUL", profileName, agentName, name)
+				}
+			}
 		}
 	}
 	for i, p := range c.Projects {
@@ -166,10 +213,36 @@ func (c Config) Validate() error {
 			return fmt.Errorf("project %s must define profiles", p.Path)
 		}
 		for a, prof := range p.Profiles {
-			if strings.TrimSpace(a) == "" || strings.TrimSpace(prof) == "" {
-				return fmt.Errorf("project %s has invalid profile mapping", p.Path)
+			if err := validateCommandName(a); err != nil {
+				return fmt.Errorf("project %s has invalid agent mapping %q: %w", p.Path, a, err)
+			}
+			if err := validateSafePathSegment(prof); err != nil {
+				return fmt.Errorf("project %s has invalid profile mapping %q: %w", p.Path, prof, err)
 			}
 		}
+	}
+	return nil
+}
+
+func validateCommandName(name string) error {
+	if strings.TrimSpace(name) == "" {
+		return fmt.Errorf("name must not be empty")
+	}
+	if name != filepath.Base(name) || name == "." || name == ".." {
+		return fmt.Errorf("name must be a command name, not a path")
+	}
+	if strings.ContainsRune(name, '\x00') {
+		return fmt.Errorf("name must not contain NUL")
+	}
+	return nil
+}
+
+func validateSafePathSegment(value string) error {
+	if strings.TrimSpace(value) != value || value == "" || value == "." || value == ".." {
+		return fmt.Errorf("must be a non-empty safe path segment")
+	}
+	if strings.ContainsAny(value, "/\\") || strings.ContainsRune(value, '\x00') || strings.ContainsRune(value, filepath.Separator) {
+		return fmt.Errorf("must not contain path separators or NUL")
 	}
 	return nil
 }
@@ -184,5 +257,5 @@ func AgentNames(agents map[string]AgentConfig) []string {
 }
 
 func StarterConfig() Config {
-	return Config{Default: DefaultPolicyDeny, UI: UIConfig{StartupBanner: true}, Agents: map[string]AgentConfig{}, Projects: []ProjectRule{}}
+	return Config{Default: DefaultPolicyDeny, UI: UIConfig{StartupBanner: true}, Agents: map[string]AgentConfig{}, Profiles: map[string]ProfileConfig{}, Projects: []ProjectRule{}}
 }

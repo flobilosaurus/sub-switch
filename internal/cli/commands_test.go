@@ -30,8 +30,8 @@ func TestInitCreatesEmptyStarterConfigAndRefusesOverwrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	content := string(b)
-	if !strings.Contains(content, "agents: {}") || !strings.Contains(content, "projects: []") {
-		t.Fatalf("starter config should not include initial agents or projects:\n%s", content)
+	if !strings.Contains(content, "agents: {}") || !strings.Contains(content, "profiles: {}") || !strings.Contains(content, "projects: []") {
+		t.Fatalf("starter config should not include initial agents or projects and should include empty profiles:\n%s", content)
 	}
 	if _, err := execute("--config", cfg, "init"); err == nil {
 		t.Fatal("expected overwrite refusal")
@@ -48,7 +48,7 @@ func TestWhichCommand(t *testing.T) {
 	if err := os.MkdirAll(proj, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	configText := "default: deny\nagents:\n  pi:\n    command: /bin/echo\nprojects:\n  - path: " + proj + "\n    profiles:\n      pi: example\n"
+	configText := "default: deny\nagents:\n  pi:\n    command: /bin/echo\nprofiles:\n  example:\n    pi:\n      env: {}\nprojects:\n  - path: " + proj + "\n    profiles:\n      pi: example\n"
 	if err := os.WriteFile(cfg, []byte(configText), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestAddProjectAddsCurrentFolderAndUpdatesExistingMapping(t *testing.T) {
 	if err := os.MkdirAll(proj, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	configText := "default: deny\nagents:\n  pi:\n    command: /bin/echo\n  claude:\n    command: /bin/echo\nprojects: []\n"
+	configText := "default: deny\nagents:\n  pi:\n    command: /bin/echo\n  claude:\n    command: /bin/echo\nprofiles:\n  work:\n    pi:\n      env:\n        ANTHROPIC_API_KEY: keep-me\nprojects: []\n"
 	if err := os.WriteFile(cfg, []byte(configText), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -104,8 +104,8 @@ func TestAddProjectAddsCurrentFolderAndUpdatesExistingMapping(t *testing.T) {
 		t.Fatal(err)
 	}
 	content := string(b)
-	if !strings.Contains(content, "path: "+resolvedProj) || !strings.Contains(content, "pi: work") || !strings.Contains(content, "claude: work") {
-		t.Fatalf("config was not updated with project mappings:\n%s", content)
+	if !strings.Contains(content, "path: "+resolvedProj) || !strings.Contains(content, "pi: work") || !strings.Contains(content, "claude: work") || !strings.Contains(content, "ANTHROPIC_API_KEY: keep-me") {
+		t.Fatalf("config was not updated with project mappings or preserved profiles:\n%s", content)
 	}
 	if _, err := execute("--config", cfg, "add-project", "pi=personal"); err == nil {
 		t.Fatal("expected conflicting mapping to be refused")
@@ -186,7 +186,7 @@ func TestInstallWrappersAddsAgentAndInstallsConfiguredAgents(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
-	configText := "default: deny\nagents:\n  pi:\n    command: /bin/echo\nprojects: []\n"
+	configText := "default: deny\nagents:\n  pi:\n    command: /bin/echo\nprofiles:\n  work:\n    pi:\n      env:\n        ANTHROPIC_API_KEY: keep-me\nprojects: []\n"
 	if err := os.WriteFile(cfg, []byte(configText), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -207,8 +207,8 @@ func TestInstallWrappersAddsAgentAndInstallsConfiguredAgents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), "gemini:") || !strings.Contains(string(b), "command: "+gemini) {
-		t.Fatalf("config was not updated with gemini command:\n%s", b)
+	if !strings.Contains(string(b), "gemini:") || !strings.Contains(string(b), "command: "+gemini) || !strings.Contains(string(b), "ANTHROPIC_API_KEY: keep-me") {
+		t.Fatalf("config was not updated with gemini command or preserved profiles:\n%s", b)
 	}
 }
 
@@ -219,7 +219,14 @@ func TestRunCommandQuietForwardsArgsAndEnv(t *testing.T) {
 	dir := t.TempDir()
 	fake := filepath.Join(dir, "fake-agent")
 	outFile := filepath.Join(dir, "out")
-	script := "#!/bin/sh\necho args:$@ > \"" + outFile + "\"\necho config:$XDG_CONFIG_HOME >> \"" + outFile + "\"\n"
+	script := "#!/bin/sh\n{\n" +
+		"echo args:$@\n" +
+		"echo config:$XDG_CONFIG_HOME\n" +
+		"echo pi_dir:$PI_CODING_AGENT_DIR\n" +
+		"echo anthropic:${ANTHROPIC_API_KEY-unset}\n" +
+		"echo openai:${OPENAI_API_KEY-unset}\n" +
+		"echo keep:$KEEP_ME\n" +
+		"} > \"" + outFile + "\"\n"
 	if err := os.WriteFile(fake, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -228,10 +235,13 @@ func TestRunCommandQuietForwardsArgsAndEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := filepath.Join(dir, "config.yaml")
-	configText := "default: deny\nui:\n  startup_banner: true\nagents:\n  pi:\n    command: " + fake + "\nprojects:\n  - path: " + proj + "\n    profiles:\n      pi: company\n"
+	configText := "default: deny\nui:\n  startup_banner: true\nagents:\n  pi:\n    command: " + fake + "\nprofiles:\n  company:\n    pi:\n      env:\n        ANTHROPIC_API_KEY: company-key\nprojects:\n  - path: " + proj + "\n    profiles:\n      pi: company\n"
 	if err := os.WriteFile(cfg, []byte(configText), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	t.Setenv("ANTHROPIC_API_KEY", "global")
+	t.Setenv("OPENAI_API_KEY", "global")
+	t.Setenv("KEEP_ME", "yes")
 	cwd, getwdErr := os.Getwd()
 	if getwdErr != nil {
 		t.Fatal(getwdErr)
@@ -251,7 +261,8 @@ func TestRunCommandQuietForwardsArgsAndEnv(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(b), "args:--version") || !strings.Contains(string(b), "profiles/company/pi/config") {
+	content := string(b)
+	if !strings.Contains(content, "args:--version") || !strings.Contains(content, "profiles/company/pi/config") || !strings.Contains(content, "pi_dir:") || !strings.Contains(content, "anthropic:company-key") || !strings.Contains(content, "openai:unset") || !strings.Contains(content, "keep:yes") {
 		t.Fatalf("bad fake output: %s", b)
 	}
 }

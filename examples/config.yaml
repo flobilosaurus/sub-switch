@@ -10,6 +10,21 @@ agents:
     command: /opt/homebrew/bin/codex
   opencode:
     command: /opt/homebrew/bin/opencode
+profiles:
+  company-a:
+    pi:
+      env:
+        # Example only. Do not commit real secrets.
+        ANTHROPIC_API_KEY: sk-ant-example-company-a
+    claude:
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: claude-oauth-token-example
+    codex:
+      env:
+        CODEX_API_KEY: codex-api-key-example
+    opencode:
+      env:
+        OPENAI_API_KEY: openai-key-example
 projects:
   - path: /path/to/work/company-a
     profiles:

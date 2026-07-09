@@ -39,7 +39,7 @@ func TestWrapperE2EHappyPath(t *testing.T) {
 		t.Fatalf("install wrappers failed: %v\n%s", err, out)
 	}
 
-	out, err = runCmd(t, project, testEnv(home, xdgConfig), filepath.Join(wrapperDir, "pi"), "--version", "--json")
+	out, err = runCmd(t, project, append(testEnv(home, xdgConfig), "OPENAI_API_KEY=global", "ANTHROPIC_API_KEY=global", "PI_CODING_AGENT_DIR=old"), filepath.Join(wrapperDir, "pi"), "--version", "--json")
 	if err != nil {
 		t.Fatalf("wrapper failed: %v\n%s", err, out)
 	}
@@ -58,6 +58,10 @@ func TestWrapperE2EHappyPath(t *testing.T) {
 	assertRecordContains(t, record, "XDG_CONFIG_HOME:"+filepath.Join(home, ".local", "share", "sub-switch", "profiles", "company", "pi", "config")+"\n")
 	assertRecordContains(t, record, "XDG_CACHE_HOME:"+filepath.Join(home, ".cache", "sub-switch", "profiles", "company", "pi", "cache")+"\n")
 	assertRecordContains(t, record, "XDG_DATA_HOME:"+filepath.Join(home, ".local", "share", "sub-switch", "profiles", "company", "pi", "data")+"\n")
+	assertRecordContains(t, record, "PI_CODING_AGENT_DIR:"+filepath.Join(home, ".local", "share", "sub-switch", "profiles", "company", "pi", "pi-agent")+"\n")
+	assertRecordContains(t, record, "PI_CODING_AGENT_SESSION_DIR:"+filepath.Join(home, ".local", "share", "sub-switch", "profiles", "company", "pi", "pi-sessions")+"\n")
+	assertRecordContains(t, record, "ANTHROPIC_API_KEY:company-key\n")
+	assertRecordContains(t, record, "OPENAI_API_KEY:unset\n")
 }
 
 func TestWrapperE2EDeniedFromUnmatchedDirectory(t *testing.T) {
@@ -212,7 +216,7 @@ func appendWithoutPrefixes(env []string, prefixes ...string) []string {
 
 func writeFakeAgent(t *testing.T, path, recordFile string) {
 	t.Helper()
-	script := fmt.Sprintf("#!/bin/sh\n{\n  printf 'args:%%s\\n' \"$*\"\n  printf 'cwd:%%s\\n' \"$(pwd -P)\"\n  printf 'XDG_CONFIG_HOME:%%s\\n' \"$XDG_CONFIG_HOME\"\n  printf 'XDG_CACHE_HOME:%%s\\n' \"$XDG_CACHE_HOME\"\n  printf 'XDG_DATA_HOME:%%s\\n' \"$XDG_DATA_HOME\"\n} > %q\n", recordFile)
+	script := fmt.Sprintf("#!/bin/sh\n{\n  printf 'args:%%s\\n' \"$*\"\n  printf 'cwd:%%s\\n' \"$(pwd -P)\"\n  printf 'XDG_CONFIG_HOME:%%s\\n' \"$XDG_CONFIG_HOME\"\n  printf 'XDG_CACHE_HOME:%%s\\n' \"$XDG_CACHE_HOME\"\n  printf 'XDG_DATA_HOME:%%s\\n' \"$XDG_DATA_HOME\"\n  printf 'PI_CODING_AGENT_DIR:%%s\\n' \"$PI_CODING_AGENT_DIR\"\n  printf 'PI_CODING_AGENT_SESSION_DIR:%%s\\n' \"$PI_CODING_AGENT_SESSION_DIR\"\n  printf 'ANTHROPIC_API_KEY:%%s\\n' \"${ANTHROPIC_API_KEY-unset}\"\n  printf 'OPENAI_API_KEY:%%s\\n' \"${OPENAI_API_KEY-unset}\"\n} > %q\n", recordFile)
 	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +224,7 @@ func writeFakeAgent(t *testing.T, path, recordFile string) {
 
 func writeConfig(t *testing.T, cfg, projectPath, realAgentPath, profile string) {
 	t.Helper()
-	text := fmt.Sprintf("default: deny\nui:\n  startup_banner: true\nagents:\n  pi:\n    command: %q\nprojects:\n  - path: %q\n    profiles:\n      pi: %q\n", realAgentPath, projectPath, profile)
+	text := fmt.Sprintf("default: deny\nui:\n  startup_banner: true\nagents:\n  pi:\n    command: %q\nprofiles:\n  %s:\n    pi:\n      env:\n        ANTHROPIC_API_KEY: company-key\nprojects:\n  - path: %q\n    profiles:\n      pi: %q\n", realAgentPath, profile, projectPath, profile)
 	if err := os.WriteFile(cfg, []byte(text), 0o600); err != nil {
 		t.Fatal(err)
 	}
