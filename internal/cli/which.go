@@ -18,15 +18,15 @@ func newWhichCommand(opts *options) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		sel, err := resolver.Resolve(*c, cwd, args[0])
+		analysis, err := resolver.AnalyzeRun(*c, cwd, args[0])
 		if err != nil {
 			return err
 		}
-		if sel.Denied {
-			cmd.Printf("[sub-switch] denied: %s\n", sel.Reason)
+		if !analysis.Ready() {
+			cmd.Printf("[sub-switch] denied: %s\n", analysis.Reason)
 			return nil
 		}
-		cmd.Printf("[sub-switch] %s -> profile %s (%s)\n", sel.Agent, sel.Profile, sel.ProjectPath)
+		cmd.Printf("[sub-switch] %s -> profile %s (%s)\n", analysis.Agent, analysis.Profile, analysis.ProjectPath)
 		return nil
 	}}
 }
