@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-repo="${SUB_SWITCH_REPO:-florian-balling/sub-switch}"
+repo="${SUB_SWITCH_REPO:-flobilosaurus/sub-switch}"
 version="${SUB_SWITCH_VERSION:-latest}"
 install_dir="${INSTALL_DIR:-$HOME/.local/bin}"
 binary_name="sub-switch"

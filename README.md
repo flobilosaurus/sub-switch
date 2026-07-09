@@ -9,14 +9,14 @@ The MVP supports configurable agent commands, denies unknown folders by default,
 Install the latest release to `~/.local/bin`:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/florian-balling/sub-switch/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/flobilosaurus/sub-switch/main/install.sh | sh
 ```
 
 Use a custom install directory or version:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/florian-balling/sub-switch/main/install.sh | INSTALL_DIR=/usr/local/bin sh
-curl -fsSL https://raw.githubusercontent.com/florian-balling/sub-switch/main/install.sh | SUB_SWITCH_VERSION=v0.1.0 sh
+curl -fsSL https://raw.githubusercontent.com/flobilosaurus/sub-switch/main/install.sh | INSTALL_DIR=/usr/local/bin sh
+curl -fsSL https://raw.githubusercontent.com/flobilosaurus/sub-switch/main/install.sh | SUB_SWITCH_VERSION=v0.1.0 sh
 ```
 
 ## Development tools with mise
